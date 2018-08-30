@@ -1,4 +1,4 @@
-#!/home/ubuntu/twitter_stream/twitter_env/bin/python3
+#!/home/ubuntu/tweestat/tweestat-collector/collector-env/bin/python3
 
 # -*- coding: utf-8 -*-
 import re

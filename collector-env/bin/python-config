@@ -1,4 +1,4 @@
-#!/home/ubuntu/twitter_stream/twitter_env/bin/python
+#!/home/ubuntu/tweestat/tweestat-collector/collector-env/bin/python
 
 import sys
 import getopt

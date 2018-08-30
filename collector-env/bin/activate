@@ -40,7 +40,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/home/ubuntu/twitter_stream/twitter_env"
+VIRTUAL_ENV="/home/ubuntu/tweestat/tweestat-collector/collector-env"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
