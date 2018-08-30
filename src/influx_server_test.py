@@ -95,8 +95,8 @@ class StdOutListener(StreamListener):
             for x in range(20):
                 hashtag[0]["tags"]["hash"] = str(sorted_hashs[x])
                 hashtag[0]["fields"]["count"] = self.hashtags[sorted_hashs[x]]
-            for x in range(10):
                 self.client.write_points(hashtag)
+            for x in range(10):
                 url[0]["tags"]["url"] = str(sorted_urls[x])
                 url[0]["fields"]["count"] = self.urls[sorted_urls[x]]
                 self.client.write_points(url)
