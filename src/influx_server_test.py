@@ -4,6 +4,8 @@ from tweepy import OAuthHandler
 from tweepy import Stream
 from influxdb import InfluxDBClient
 import json
+import datetime
+from urllib.parse import urlparse
 
 access_token = "971353729369853952-nd1J0LwfQ2eaUbfGycZGIuvlPjb79JF"
 access_token_secret = "iI7gDWynLj7hlS4MtWI2kdFSTZIwymtsSszhdR13JxMRS"
@@ -15,7 +17,15 @@ hashtag = [{"measurement": "hashtag",
                 "hash": ""
             },
             "fields": {
-                "count":""
+                "count":1
+            }}]
+
+url = [{"measurement": "url",
+            "tags": {
+                "url": ""
+            },
+            "fields": {
+                "count":1
             }}]
 
 tweet = [{"measurement": "tweet",
@@ -44,7 +54,6 @@ tweet = [{"measurement": "tweet",
               "usr_is_verified":"",
               #NOT YET INCLUDED IN THESIS:
               "no_words":"",
-              "counter":1
           }}]
 
 class StdOutListener(StreamListener):
@@ -53,16 +62,15 @@ class StdOutListener(StreamListener):
         self.client = InfluxDBClient('localhost', 8086, 'admin', 'targa123', 'tweestat_test')
 
     def on_data(self, data):
-        if data.startswith("{\"created_at"):
-            json_data = json.loads(data)
+        try:
+            if data.startswith("{\"created_at"):
+                json_data = json.loads(data)
 
-            self.build_tweet(json_data)
-            self.client.write_points(tweet)
-
-            #for tag in json_data["entities"]["hashtags"]:
-            #    hashtag[0]["tags"]["hash"] = tag["text"]
-            #    self.client.write_points(hashtag)
-
+                self.build_tweet(json_data)
+        except Exception as e:
+            print(datetime.datetime.now())
+            print(repr(e))
+            print("")
 
 
     def on_error(self, status):
@@ -75,8 +83,8 @@ class StdOutListener(StreamListener):
         self.user_reader(json_data, 'friends_count')
         self.user_reader(json_data, 'statuses_count')
         self.user_reader(json_data, 'favourites_count')
-        #self.boolean_reader(json_data, 'possibly_sensitive')
-        #self.boolean_reader(json_data, 'is_quote_status')
+        self.boolean_reader(json_data, 'possibly_sensitive')
+        self.boolean_reader(json_data, 'is_quote_status')
         self.exists_reader(json_data, 'retweeted_status')
         self.null_reader(json_data, 'coordinates')
         self.null_reader(json_data, 'place')
@@ -96,6 +104,28 @@ class StdOutListener(StreamListener):
             tweet[0]["tags"]["source"] = source[source.index(">")+1:source.index("<", source.index(">") + 1)]
         except KeyError:
             print('source_error')
+
+        try:
+            characters = json_data["text"]
+            tweet[0]["fields"]["no_characters"] = len(characters)
+        except KeyError:
+            print('Character count error')
+
+        self.client.write_points(tweet)
+
+        try:
+            for tag in json_data["entities"]["hashtags"]:
+                hashtag[0]["tags"]["hash"] = tag["text"]
+                self.client.write_points(hashtag)
+        except KeyError:
+            print('Hashtag key error')
+
+        try:
+            for tag in json_data["entities"]["urls"]:
+                hashtag[0]["tags"]["hash"] = urlparse(tag["expanded_url"]).netloc
+                self.client.write_points(hashtag)
+        except KeyError:
+            print('Hashtag key error')
 
     def entities_count_reader(self, json_data, field):
         try:
@@ -123,12 +153,11 @@ class StdOutListener(StreamListener):
 
     def boolean_reader(self, json_data, field):
         try:
-            if json_data[field] == 'true':
+            if str(json_data[field]) == "True":
                 tweet[0]["fields"][field] = 1
             else:
                 tweet[0]["fields"][field] = 0
         except KeyError:
-            print('Boolean reader error on: '+ field)
             tweet[0]["fields"][field] = 0
 
     def exists_reader(self, json_data, field):
