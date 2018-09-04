@@ -7,6 +7,7 @@ import simplejson as json
 import datetime
 import threading
 from urllib.parse import urlparse
+import logging
 
 access_token = "971353729369853952-nd1J0LwfQ2eaUbfGycZGIuvlPjb79JF"
 access_token_secret = "iI7gDWynLj7hlS4MtWI2kdFSTZIwymtsSszhdR13JxMRS"
@@ -63,13 +64,14 @@ second_time = []
 third_time = []
 write_time = []
 
+
 class StdOutListener(StreamListener):
     def __init__(self):
+        super().__init__()
         self.hashtags={}
         self.urls={}
         self.tweets = []
-        super().__init__()
-        self.client = InfluxDBClient('52.57.236.217', 8086, 'admin', 'targa123', 'tweestat_test')
+        logging.basicConfig(filename='../logs/collector.log', format='')
 
     def on_data(self, data):
         try:
@@ -89,17 +91,17 @@ class StdOutListener(StreamListener):
 
     def migrate_dicts(self):
         while True:
-            time.sleep(60)
+            time.sleep(3)
             sorted_hashs = list(reversed(sorted(self.hashtags, key=self.hashtags.__getitem__)))
             sorted_urls = list(reversed(sorted(self.urls, key=self.urls.__getitem__)))
             for x in range(20):
                 hashtag[0]["tags"]["hash"] = str(sorted_hashs[x])
                 hashtag[0]["fields"]["count"] = self.hashtags[sorted_hashs[x]]
-                self.client.write_points(hashtag)
+                client.write_points(hashtag)
             for x in range(10):
                 url[0]["tags"]["url"] = str(sorted_urls[x])
                 url[0]["fields"]["count"] = self.urls[sorted_urls[x]]
-                self.client.write_points(url)
+                client.write_points(url)
             self.hashtags = {}
             print("on_data_time:  " + str(sum(on_data_time) / float(len(on_data_time))))
             print("first_time:  " + str(sum(first_time) / float(len(first_time))))
@@ -111,7 +113,7 @@ class StdOutListener(StreamListener):
         while True:
             time.sleep(1)
             for tweet in self.tweets:
-                self.client.write_points(tweet)
+                client.write_points(tweet)
 
 
 
@@ -236,11 +238,12 @@ if __name__ == '__main__':
 
     #This handles Twitter authetification and the connection to Twitter Streaming API
     print("STARTED ...")
+    client = InfluxDBClient('52.57.236.217', 8086, 'admin', 'targa123', 'tweestat_test')
     connection = StdOutListener()
     auth = OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_token_secret)
     stream = Stream(auth, connection)
 
-    threading.Thread(target=stream.sample).start()
+    threading.Thread(target=stream.sample, name='MainThread').start()
     threading.Thread(target=connection.migrate_dicts).start()
     threading.Thread(target=connection.migrate_tweets()).start()
