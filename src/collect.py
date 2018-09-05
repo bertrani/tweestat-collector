@@ -2,11 +2,13 @@ from tweepy.streaming import StreamListener
 import simplejson as json
 from urllib.parse import urlparse
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
 class StdOutListener(StreamListener):
     def __init__(self, data, lock):
+        logging.info("Collector started ...")
         super().__init__()
         self.data = data
         self.lock = lock
@@ -24,7 +26,6 @@ class StdOutListener(StreamListener):
         logging.error("Error on API connection: %s", status)
 
     def get_data(self, json_data):
-
         self.entities_count_reader(json_data, 'hashtags')
         self.entities_count_reader(json_data, 'urls')
         self.user_reader(json_data, 'followers_count')
@@ -42,8 +43,6 @@ class StdOutListener(StreamListener):
         self.lock.acquire()
         self.data.tweet_buffer.append(self.tweet)
         self.lock.release()
-
-
 
     def entities_count_reader(self, json_data, field):
         try:
@@ -115,7 +114,7 @@ class StdOutListener(StreamListener):
     def hash_url_reader(self, json_data):
         try:
             for tag in json_data["entities"]["hashtags"]:
-                tag_str = tag["text"]
+                tag_str = str.lower(tag["text"])
                 self.lock.acquire()
                 if tag_str in self.data.hashtag_map:
                     self.data.hashtag_map[tag_str] += 1
