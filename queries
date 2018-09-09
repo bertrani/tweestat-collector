@@ -1,0 +1,6 @@
+
+# Contininuous Query to get the mean of all numeric stats in 1 minute buckets to a new measurement
+CREATE continuous query "mean_1m" ON "tweestat_test2" BEGIN SELECT count("no_hashtags") AS "total_tweets", mean("has_coordinates") AS "has_coordinates", mean("has_place") AS "has_place", mean("is_quote_status") AS "is_quote", mean("retweeted_status") AS "is_retweeted", mean("possibly_sensitive") AS "is_sensitive", mean("no_hashtags") AS "no_hashtags", mean("no_characters") AS "no_characters", mean("no_urls") AS "no_urls", mean("usr_favourites_count") AS "usr_favourites", mean("usr_followers_count") AS "usr_followers", mean("usr_friends_count") AS "usr_friends", mean("usr_statuses_count") AS "usr_statuses" INTO "autogen"."tweet_means" FROM "temp".tweet GROUP BY time(1m) END
+
+# Rank tags by their occurrence
+SELECT top(lang_sum,usr_language,15) FROM (SELECT count(no_hashtags) as lang_sum FROM tweet WHERE time > now() - 10d GROUP BY usr_language)

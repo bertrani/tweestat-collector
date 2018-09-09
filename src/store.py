@@ -3,69 +3,78 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def store_tags_and_urls(client, lock, data):
-    hashtag = [{"measurement": "hashtag", "tags": {}, "fields": {}}]
-    url = [{"measurement": "url", "tags": {}, "fields": {}}]
+
+def store_tweets(client, lock, data, interval=1):
+    time.sleep(1)
     while True:
-        try:
-            # Store every 15 minutes
-            time.sleep(600)
-            if data.hashtag_map:
-                lock.acquire()
-                # Create descending lists with the most commonly appeared hashtags
-                sorted_hashs = list(reversed(sorted(data.hashtag_map, key=data.hashtag_map.__getitem__)))
-                lock.release()
-                try:
-                    for x in range(100):
-                        hashtag[0]["tags"]["hash"] = str(sorted_hashs[x])
-                        # Estimating the total occurance of the hashtag per minute.
-                        # Since a sample of 1% is used, the estimated total occurance is 100 times as high.
-                        # Because values are accumulated for 10 minutes, the value is divided by 10 to
-                        # get the occurrence per minute.
-                        hashtag[0]["fields"]["count"] = round((data.hashtag_map[sorted_hashs[x]]*100)/10)
-                        client.write_points(hashtag)
-                except IndexError as e:
-                    logging.warning("IndexError occured while writing hashtags: %s", str(e))
-                lock.acquire()
-                data.reset_hashtags()
-                lock.release()
-            else:
-                logging.warning("Empty hashtag map")
-            if data.url_map:
-                lock.acquire()
-                sorted_urls = list(reversed(sorted(data.url_map, key=data.url_map.__getitem__)))
-                lock.release()
-                try:
-                    for x in range(50):
-                        url[0]["tags"]["url"] = str(sorted_urls[x])
-                        url[0]["fields"]["count"] = round((data.url_map[sorted_urls[x]]*100)/10)
-                        client.write_points(url)
-                except IndexError as e:
-                    logging.warning("IndexError occured while writing urls: %s", str(e))
+        time.sleep(interval)
+        _store_raw(client=client, lock=lock, data=data)
 
-                lock.acquire()
-                data.reset_urls()
-                lock.release()
-            else:
-                logging.warning("Empty URL map")
-        except Exception as e:
-            logging.error("Failed to store hashtags/urls: %s", str(e))
 
-def store_tweets(client, lock, data):
+def store_tags_urls(client, lock, data, interval=900, min_size=5):
     while True:
+        last_count = data.counter
+        time.sleep(interval)
+        _store_summed_list(client=client, lock=lock, data=data,
+                           tag_map=data.hashtag_map, name="hashtag", min_size=min_size, last_count=last_count)
+        _store_summed_list(client=client, lock=lock, data=data,
+                           tag_map=data.url_map, name="url", min_size=min_size, last_count=last_count)
+
+def store_source_lang(client, lock, data, interval=60, min_size_lang=8, min_size_source=5):
+    while True:
+        last_count = data.counter
+        time.sleep(interval)
+        _store_summed(client=client, lock=lock, data=data,tag_map=data.source_map, name="source", min_size=min_size_source, last_count=last_count)
+        _store_summed(client=client, lock=lock, data=data,
+                     tag_map=data.lang_map, name="lang", min_size=min_size_lang, last_count=last_count)
+        _store_summed(client=client, lock=lock, data=data,
+                     tag_map=data.usr_lang_map, name="usr_lang", min_size=min_size_lang, last_count=last_count)
+
+
+def _store_raw(client, lock, data):
+    if data.tweet_buffer:
+        lock.acquire()
+        client.write_points(data.tweet_buffer, retention_policy='temp')
+        data.reset_tweets()
+        lock.release()
+    else:
+        logging.warning("Empty tweet buffer")
+
+
+def _store_summed_list(client, lock, data, tag_map, name, min_size, last_count):
+    if tag_map:
+        json = {"measurement": str(name), "tags": {}, "fields": {}}
         try:
-            time.sleep(1)
-            if data.tweet_buffer:
-                lock.acquire()
-                for tweet in data.tweet_buffer:
-                    client.write_points(tweet)
-                data.reset_tweets()
-                lock.release()
-            else:
-                logging.warning("Empty tweet buffer")
-                time.sleep(10)
-        except Exception as e:
-            logging.error("Failed to store tweets: %s", str(e))
+            json_list = []
+            lock.acquire()
+            for key in tag_map:
+                if tag_map[key] >= min_size:
+                    json["tags"][str(name)] = key
+                    json["fields"]["count"] = tag_map[key]
+                    json["fields"]["total_count"] = data.counter - last_count
+                    json_list.append(json)
+            getattr(data, "reset_"+name)()
+            lock.release()
+            client.write_points(json_list)
+        except IndexError as e:
+            logging.warning("IndexError occured while writing %s: %s".format(name, str(e)))
+    else:
+        logging.warning("Empty %s map".format(name))
 
 
-
+def _store_summed(client, lock, data, tag_map, name, min_size, last_count):
+    if tag_map:
+        json = {"measurement": str(name), "tags": {}, "fields": {}}
+        try:
+            lock.acquire()
+            for key in tag_map:
+                if tag_map[key] >= min_size:
+                    json["fields"][key] = tag_map[key]
+            json["fields"]["total_count"] = data.counter - last_count
+            getattr(data, "reset_" + name)()
+            lock.release()
+            client.write_points([json])
+        except IndexError as e:
+            logging.warning("IndexError occured while writing %s: %s".format(name, str(e)))
+    else:
+        logging.warning("Empty %s map".format(name))

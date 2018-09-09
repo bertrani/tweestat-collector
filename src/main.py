@@ -10,7 +10,6 @@ import configparser
 
 def collector():
     wait_time = 1
-
     while True:
         t0 = time.time()
         try:
@@ -50,7 +49,7 @@ if __name__ == '__main__':
     lock = threading.Lock()
 
     client = InfluxDBClient(config["INFLUXDB"]["IP"], 8086, config["INFLUXDB"]["user"],
-                            config["INFLUXDB"]["password"], 'tweestat_test')
+                            config["INFLUXDB"]["password"], "tweestat_test2")
 
     # client and data are used by several threads and
     # mostly handled by a central lock instance
@@ -60,7 +59,10 @@ if __name__ == '__main__':
     connection = StdOutListener(data=data, lock=lock)
     stream = Stream(auth, connection)
 
-    threading.Thread(target=collector, name='Collect').start()
-    threading.Thread(target=store_tweets, kwargs=dict(client=client, data=data, lock=lock), name="StoreTweets").start()
-    threading.Thread(target=store_tags_and_urls,
-                     kwargs=dict(client=client, data=data, lock=lock), name="StoreHashURL").start()
+    threading.Thread(target=stream.sample, name='Collect').start()
+    threading.Thread(target=store_tweets,
+                     kwargs=dict(client=client, data=data, lock=lock, interval=1), name="StoreTweets").start()
+    threading.Thread(target=store_tags_urls,
+                     kwargs=dict(client=client, data=data, lock=lock, interval=900), name="StoreTags").start()
+    threading.Thread(target=store_source_lang,
+                     kwargs=dict(client=client, data=data, lock=lock, interval=60), name="StoreTags").start()

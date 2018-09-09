@@ -2,7 +2,6 @@ from tweepy.streaming import StreamListener
 import simplejson as json
 from urllib.parse import urlparse
 import logging
-import time
 
 logger = logging.getLogger(__name__)
 
@@ -12,15 +11,14 @@ class StdOutListener(StreamListener):
         super().__init__()
         self.data = data
         self.lock = lock
-        self.tweet = [{"measurement": "tweet", "tags": {}, "fields": {}}]
+        self.tweet = {"measurement": "tweet", "tags": {}, "fields": {}}
 
     def on_data(self, data):
-        try:
-            if data.startswith("{\"created_at"):
-                json_data = json.loads(data)
-                self.get_data(json_data)
-        except Exception as e:
-            logging.critical("Failed to collect data: %s", str(e))
+        self.data.count()
+        if data.startswith("{\"created_at"):
+            json_data = json.loads(data)
+            self.get_data(json_data)
+
 
     def on_error(self, status):
         logging.error("Error on API connection: %s", status)
@@ -37,79 +35,103 @@ class StdOutListener(StreamListener):
         self.exists_reader(json_data, 'retweeted_status')
         self.null_reader(json_data, 'coordinates')
         self.null_reader(json_data, 'place')
-        self.misc_reader(json_data)
+        self.char_reader(json_data)
+        self.tag_reader(json_data)
         self.hash_url_reader(json_data)
 
         self.lock.acquire()
         self.data.tweet_buffer.append(self.tweet)
         self.lock.release()
 
+        self.tweet = {"measurement": "tweet", "tags": {}, "fields": {}}
+
     def entities_count_reader(self, json_data, field):
         try:
-            self.tweet[0]["fields"]["no_" + field] = len(json_data["entities"][field])
+            self.tweet["fields"]["no_" + field] = len(json_data["entities"][field])
         except KeyError:
-            self.tweet[0]["fields"]["no_" + field] = 0
+            self.tweet["fields"]["no_" + field] = 0
             logging.warning("KeyError while reading " + field)
 
     def user_reader(self, json_data, field):
         try:
-            self.tweet[0]["fields"]["usr_" + field] = json_data["user"][field]
+            self.tweet["fields"]["usr_" + field] = json_data["user"][field]
         except KeyError:
-            self.tweet[0]["fields"]["usr_" + field] = 0
+            self.tweet["fields"]["usr_" + field] = 0
             logging.warning('KeyError while reading ' + field)
 
     def null_reader(self, json_data, field):
         try:
             if json_data[field]:
-                self.tweet[0]["fields"]['has_' + field] = 1
+                self.tweet["fields"]['has_' + field] = 1
             else:
-                self.tweet[0]["fields"]['has_' + field] = 0
+                self.tweet["fields"]['has_' + field] = 0
         except KeyError:
-            self.tweet[0]["fields"]['has_' + field] = 0
+            self.tweet["fields"]['has_' + field] = 0
             logging.warning('KeyError while reading ' + field)
 
     def boolean_reader(self, json_data, field):
         try:
             if str(json_data[field]) == "True":
-                self.tweet[0]["fields"][field] = 1
+                self.tweet["fields"][field] = 1
             else:
-                self.tweet[0]["fields"][field] = 0
+                self.tweet["fields"][field] = 0
         except KeyError:
-            self.tweet[0]["fields"][field] = 0
+            self.tweet["fields"][field] = 0
 
     def exists_reader(self, json_data, field):
         try:
             if json_data[field]:
-                self.tweet[0]["fields"][field] = 1
+                self.tweet["fields"][field] = 1
             else:
-                self.tweet[0]["fields"][field] = 0
+                self.tweet["fields"][field] = 0
         except KeyError:
-            self.tweet[0]["fields"][field] = 0
+            self.tweet["fields"][field] = 0
 
-    def misc_reader(self, json_data):
+    def char_reader(self, json_data):
         try:
-            self.tweet[0]["tags"]["usr_language"] = json_data["user"]["lang"]
+            characters = json_data["text"]
+            self.tweet["fields"]["no_characters"] = len(characters)
+        except KeyError:
+            logging.warning('KeyError while reading length of text')
+
+    def tag_reader(self, json_data):
+        try:
+            self.tweet["tags"]["usr_language"] = json_data["user"]["lang"]
+            self.lock.acquire()
+            if json_data["user"]["lang"] in self.data.usr_lang_map:
+                self.data.usr_lang_map[json_data["user"]["lang"]] += 1
+            else:
+                self.data.usr_lang_map[json_data["user"]["lang"]] = 1
+            self.lock.release()
         except KeyError:
             logging.warning('KeyError while reading user/lang')
 
         try:
-            self.tweet[0]["tags"]["tweet_language"] = json_data["lang"]
+            self.tweet["tags"]["tweet_language"] = json_data["lang"]
+            self.lock.acquire()
+            if json_data["lang"] in self.data.lang_map:
+                self.data.lang_map[json_data["lang"]] += 1
+            else:
+                self.data.lang_map[json_data["lang"]] = 1
+            self.lock.release()
         except KeyError:
             logging.warning('KeyError while reading tweet/lang')
 
         try:
             source = json_data["source"]
-            self.tweet[0]["tags"]["source"] = source[source.index(">")+1:source.index("<", source.index(">") + 1)]
+            source_string = source[source.index(">") + 1:source.index("<", source.index(">") + 1)]
+            if source_string.startswith("Twitter "):
+                self.tweet["tags"]["source"] = source_string
+                self.lock.acquire()
+                if source_string in self.data.source_map:
+                    self.data.source_map[source_string] += 1
+                else:
+                    self.data.source_map[source_string] = 1
+                self.lock.release()
         except KeyError:
             logging.warning('KeyError while reading source')
         except Exception as e:
             logging.warning('Failed to read source field: %s', str(e))
-
-        try:
-            characters = json_data["text"]
-            self.tweet[0]["fields"]["no_characters"] = len(characters)
-        except KeyError:
-            logging.warning('KeyError while reading length of text')
 
     def hash_url_reader(self, json_data):
         try:
@@ -135,4 +157,3 @@ class StdOutListener(StreamListener):
                 self.lock.release()
         except KeyError as e:
             logging.warning('KeyError while reading urls: %s', str(e))
-
