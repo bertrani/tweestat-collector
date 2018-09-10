@@ -7,7 +7,6 @@ logger = logging.getLogger(__name__)
 
 class StdOutListener(StreamListener):
     def __init__(self, data, lock):
-        logging.info("Collector started ...")
         super().__init__()
         self.data = data
         self.lock = lock
@@ -98,10 +97,7 @@ class StdOutListener(StreamListener):
         try:
             self.tweet["tags"]["usr_language"] = json_data["user"]["lang"]
             self.lock.acquire()
-            if json_data["user"]["lang"] in self.data.usr_lang_map:
-                self.data.usr_lang_map[json_data["user"]["lang"]] += 1
-            else:
-                self.data.usr_lang_map[json_data["user"]["lang"]] = 1
+            self.data.usr_lang_counter[json_data["user"]["lang"]] += 1
             self.lock.release()
         except KeyError:
             logging.warning('KeyError while reading user/lang')
@@ -109,10 +105,7 @@ class StdOutListener(StreamListener):
         try:
             self.tweet["tags"]["tweet_language"] = json_data["lang"]
             self.lock.acquire()
-            if json_data["lang"] in self.data.lang_map:
-                self.data.lang_map[json_data["lang"]] += 1
-            else:
-                self.data.lang_map[json_data["lang"]] = 1
+            self.data.lang_counter[json_data["lang"]] += 1
             self.lock.release()
         except KeyError:
             logging.warning('KeyError while reading tweet/lang')
@@ -120,14 +113,10 @@ class StdOutListener(StreamListener):
         try:
             source = json_data["source"]
             source_string = source[source.index(">") + 1:source.index("<", source.index(">") + 1)]
-            if source_string.startswith("Twitter "):
-                self.tweet["tags"]["source"] = source_string
-                self.lock.acquire()
-                if source_string in self.data.source_map:
-                    self.data.source_map[source_string] += 1
-                else:
-                    self.data.source_map[source_string] = 1
-                self.lock.release()
+            self.tweet["tags"]["source"] = source_string
+            self.lock.acquire()
+            self.data.source_counter[source_string] += 1
+            self.lock.release()
         except KeyError:
             logging.warning('KeyError while reading source')
         except Exception as e:
@@ -138,10 +127,7 @@ class StdOutListener(StreamListener):
             for tag in json_data["entities"]["hashtags"]:
                 tag_str = str.lower(tag["text"])
                 self.lock.acquire()
-                if tag_str in self.data.hashtag_map:
-                    self.data.hashtag_map[tag_str] += 1
-                else:
-                    self.data.hashtag_map[tag_str] = 1
+                self.data.hashtag_counter[tag_str] += 1
                 self.lock.release()
         except KeyError as e:
             logging.warning('KeyError while reading hashtags: %s', str(e))
@@ -150,10 +136,7 @@ class StdOutListener(StreamListener):
             for url in json_data["entities"]["urls"]:
                 netloc = urlparse(url["expanded_url"]).netloc
                 self.lock.acquire()
-                if netloc in self.data.url_map:
-                    self.data.url_map[netloc] += 1
-                else:
-                    self.data.url_map[netloc] = 1
+                self.data.url_counter[netloc] += 1
                 self.lock.release()
         except KeyError as e:
             logging.warning('KeyError while reading urls: %s', str(e))

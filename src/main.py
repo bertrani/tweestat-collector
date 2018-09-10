@@ -1,5 +1,7 @@
 import logging
 import threading
+import traceback
+
 from tweepy import OAuthHandler, Stream
 from influxdb import InfluxDBClient
 from collect import StdOutListener
@@ -8,21 +10,24 @@ from store import *
 import time
 import configparser
 
-def collector():
+def start(function, name, kwargs=None):
     wait_time = 1
     while True:
+        logging.info("Started %s", name)
         t0 = time.time()
         try:
-            stream.sample()
-        except Exception as e:
+            if kwargs:
+                function(**kwargs)
+            else:
+                function()
+        except Exception as ex:
             if (time.time()-t0) > 10:
                 wait_time = 1
-            logging.error("Collector discontinued: %s", str(e))
+            logging.error("%s discontinued: %s", name, str(ex))
+            logging.error(traceback.print_exc())
             logging.warning("Waiting %s seconds until restarting...", wait_time)
             time.sleep(wait_time)
             wait_time *= 2
-
-
 
 if __name__ == '__main__':
     config = configparser.ConfigParser()
@@ -59,10 +64,10 @@ if __name__ == '__main__':
     connection = StdOutListener(data=data, lock=lock)
     stream = Stream(auth, connection)
 
-    threading.Thread(target=stream.sample, name='Collect').start()
-    threading.Thread(target=store_tweets,
-                     kwargs=dict(client=client, data=data, lock=lock, interval=1), name="StoreTweets").start()
-    threading.Thread(target=store_tags_urls,
-                     kwargs=dict(client=client, data=data, lock=lock, interval=900), name="StoreTags").start()
-    threading.Thread(target=store_source_lang,
-                     kwargs=dict(client=client, data=data, lock=lock, interval=60), name="StoreTags").start()
+    collect = threading.Thread(target=start, kwargs=dict(function=stream.sample, name='Collect'), name="Collect").start()
+    store1 = threading.Thread(target=start, kwargs=dict(function=store_tweets, name="StoreTweets",
+                                               kwargs=dict(client=client, data=data, lock=lock, interval=1))).start()
+    store2 = threading.Thread(target=start, kwargs=dict(function=store_tags_urls, name="StoreTagsUrls",
+                                               kwargs=dict(client=client, data=data, lock=lock, interval=600))).start()
+    store3 = threading.Thread(target=start, kwargs=dict(function=store_source_lang, name="StoreSourceLang",
+                                               kwargs=dict(client=client, data=data, lock=lock, interval=60))).start()
