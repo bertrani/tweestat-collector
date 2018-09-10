@@ -49,7 +49,7 @@ if __name__ == '__main__':
     lock = threading.Lock()
 
     client = InfluxDBClient(config["INFLUXDB"]["IP"], 8086, config["INFLUXDB"]["user"],
-                            config["INFLUXDB"]["password"], "tweestat_test2")
+                            config["INFLUXDB"]["password"], "tweestat")
 
     # client and data are used by several threads and
     # mostly handled by a central lock instance

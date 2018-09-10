@@ -34,7 +34,7 @@ def store_source_lang(client, lock, data, interval=60, min_size_lang=8, min_size
 def _store_raw(client, lock, data):
     if data.tweet_buffer:
         lock.acquire()
-        client.write_points(data.tweet_buffer, retention_policy='temp')
+        client.write_points(data.tweet_buffer, database='tweestat_raw')
         data.reset_tweets()
         lock.release()
     else:
@@ -43,11 +43,11 @@ def _store_raw(client, lock, data):
 
 def _store_summed_list(client, lock, data, tag_map, name, min_size, last_count):
     if tag_map:
-        json = {"measurement": str(name), "tags": {}, "fields": {}}
         try:
             json_list = []
             lock.acquire()
             for key in tag_map:
+                json = {"measurement": str(name), "tags": {}, "fields": {}}
                 if tag_map[key] >= min_size:
                     json["tags"][str(name)] = key
                     json["fields"]["count"] = tag_map[key]
@@ -55,6 +55,7 @@ def _store_summed_list(client, lock, data, tag_map, name, min_size, last_count):
                     json_list.append(json)
             getattr(data, "reset_"+name)()
             lock.release()
+            print(json_list)
             client.write_points(json_list)
         except IndexError as e:
             logging.warning("IndexError occured while writing %s: %s".format(name, str(e)))
@@ -73,7 +74,7 @@ def _store_summed(client, lock, data, tag_map, name, min_size, last_count):
             json["fields"]["total_count"] = data.counter - last_count
             getattr(data, "reset_" + name)()
             lock.release()
-            client.write_points([json])
+            client.write_points(json)
         except IndexError as e:
             logging.warning("IndexError occured while writing %s: %s".format(name, str(e)))
     else:
