@@ -1,7 +1,5 @@
 import logging
 import threading
-import traceback
-
 from tweepy import OAuthHandler, Stream
 from influxdb import InfluxDBClient
 from collect import StdOutListener
@@ -50,23 +48,21 @@ if __name__ == '__main__':
     # to the collect and store module and functions as
     # a temporary data store.
     data = data()
-    lock = threading.Lock()
 
     client = InfluxDBClient(config["INFLUXDB"]["IP"], 8086, config["INFLUXDB"]["user"],
                             config["INFLUXDB"]["password"], "tweestat")
 
-    # client and data are used by several threads and
-    # mostly handled by a central lock instance
+    # client and data are used by several threads
 
     auth = OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_token_secret)
-    connection = StdOutListener(data=data, lock=lock)
+    connection = StdOutListener(data=data)
     stream = Stream(auth, connection)
 
     collect = threading.Thread(target=start, kwargs=dict(function=stream.sample, name='Collect'), name="Collect").start()
     store1 = threading.Thread(target=start, kwargs=dict(function=store_tweets, name="StoreTweets",
-                                               kwargs=dict(client=client, data=data, lock=lock, interval=1))).start()
+                                               kwargs=dict(client=client, data=data, interval=1))).start()
     store2 = threading.Thread(target=start, kwargs=dict(function=store_tags_urls, name="StoreTagsUrls",
-                                               kwargs=dict(client=client, data=data, lock=lock, interval=600))).start()
+                                               kwargs=dict(client=client, data=data, interval=600))).start()
     store3 = threading.Thread(target=start, kwargs=dict(function=store_source_lang, name="StoreSourceLang",
-                                               kwargs=dict(client=client, data=data, lock=lock, interval=60))).start()
+                                               kwargs=dict(client=client, data=data, interval=60))).start()
