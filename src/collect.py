@@ -5,6 +5,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class StdOutListener(StreamListener):
     def __init__(self, data, lock):
         super().__init__()
@@ -17,7 +18,6 @@ class StdOutListener(StreamListener):
         if data.startswith("{\"created_at"):
             json_data = json.loads(data)
             self.get_data(json_data)
-
 
     def on_error(self, status):
         logging.error("Error on API connection: %s", status)
@@ -119,7 +119,7 @@ class StdOutListener(StreamListener):
             self.lock.release()
         except KeyError:
             logging.warning('KeyError while reading source')
-        except Exception as e:
+        except ValueError as e:
             logging.warning('Failed to read source field: %s', str(e))
 
     def hash_url_reader(self, json_data):

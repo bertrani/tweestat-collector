@@ -24,7 +24,6 @@ def start(function, name, kwargs=None):
             if (time.time()-t0) > 10:
                 wait_time = 1
             logging.error("%s discontinued: %s", name, str(ex))
-            logging.error(traceback.print_exc())
             logging.warning("Waiting %s seconds until restarting...", wait_time)
             time.sleep(wait_time)
             wait_time *= 2
