@@ -21,10 +21,11 @@ def start(function, name, kwargs=None):
             else:
                 function()
         except Exception as ex:
-            if (time.time()-t0) > 10:
+            kwargs[lock].release()
+            if (time.time()-t0) > 300:
                 wait_time = 1
             logging.error("%s discontinued: %s", name, str(ex))
-            logging.warning("Waiting %s seconds until restarting...", wait_time)
+            logging.warning("Waiting %s seconds until restarting %s ...", wait_time, name)
             time.sleep(wait_time)
             wait_time *= 2
 
@@ -63,10 +64,10 @@ if __name__ == '__main__':
     connection = StdOutListener(data=data, lock=lock)
     stream = Stream(auth, connection)
 
-    collect = threading.Thread(target=start, kwargs=dict(function=stream.sample, name='Collect'), name="Collect").start()
-    store1 = threading.Thread(target=start, kwargs=dict(function=store_tweets, name="StoreTweets",
+    threading.Thread(target=start, kwargs=dict(function=stream.sample, name='Collect'), name="Collect").start()
+    threading.Thread(target=start, kwargs=dict(function=store_tweets, name="StoreTweets",
                                                kwargs=dict(client=client, data=data, lock=lock, interval=1))).start()
-    store2 = threading.Thread(target=start, kwargs=dict(function=store_tags_urls, name="StoreTagsUrls",
-                                               kwargs=dict(client=client, data=data, lock=lock, interval=600))).start()
-    store3 = threading.Thread(target=start, kwargs=dict(function=store_source_lang, name="StoreSourceLang",
-                                               kwargs=dict(client=client, data=data, lock=lock, interval=60))).start()
+    #threading.Thread(target=start, kwargs=dict(function=store_tags_urls, name="StoreTagsUrls",
+    #                                           kwargs=dict(client=client, data=data, lock=lock, interval=600))).start()
+    #threading.Thread(target=start, kwargs=dict(function=store_source_lang, name="StoreSourceLang",
+    #                                           kwargs=dict(client=client, data=data, lock=lock, interval=60))).start()

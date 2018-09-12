@@ -2,6 +2,7 @@ from tweepy.streaming import StreamListener
 import simplejson as json
 from urllib.parse import urlparse
 import logging
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -35,14 +36,17 @@ class StdOutListener(StreamListener):
         self.null_reader(json_data, 'coordinates')
         self.null_reader(json_data, 'place')
         self.char_reader(json_data)
-        self.tag_reader(json_data)
-        self.hash_url_reader(json_data)
+        #self.tag_reader(json_data)
+        #self.hash_url_reader(json_data)
 
         self.lock.acquire()
         self.data.tweet_buffer.append(self.tweet)
         self.lock.release()
 
         self.tweet = {"measurement": "tweet", "tags": {}, "fields": {}}
+
+    def set_time(self):
+        self.tweet["time"] = datetime.now().isoformat()
 
     def entities_count_reader(self, json_data, field):
         try:
