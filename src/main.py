@@ -66,7 +66,7 @@ if __name__ == '__main__':
 
     threading.Thread(target=start, kwargs=dict(function=stream.sample, name='Collect'), name="Collect").start()
     threading.Thread(target=start, kwargs=dict(function=store_tweets, name="StoreTweets",
-                                               kwargs=dict(client=client, data=data, lock=lock, interval=1))).start()
+                                               kwargs=dict(client=client, data=data, lock=lock))).start()
     #threading.Thread(target=start, kwargs=dict(function=store_tags_urls, name="StoreTagsUrls",
     #                                           kwargs=dict(client=client, data=data, lock=lock, interval=600))).start()
     #threading.Thread(target=start, kwargs=dict(function=store_source_lang, name="StoreSourceLang",

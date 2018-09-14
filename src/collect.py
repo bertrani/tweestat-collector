@@ -7,6 +7,7 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 languages = ["de", "en", "ja", "es", "fr", "ru"]
+sources = {"Twitter for iPhone":"iphone", "Twitter for Android":"android", "Twitter Web Client":"web", "Twitter for iPad":"ipad"}
 
 
 class StdOutListener(StreamListener):
@@ -40,8 +41,8 @@ class StdOutListener(StreamListener):
         self.null_reader(json_data, 'coordinates')
         self.null_reader(json_data, 'place')
         self.char_reader(json_data)
-        self.hash_url_reader(json_data)
-        #self.tag_reader(json_data)
+        #self.hash_url_reader(json_data)
+        self.tag_reader(json_data)
 
         self.lock.acquire()
         self.data.tweet_buffer.append(self.tweet)
@@ -105,7 +106,7 @@ class StdOutListener(StreamListener):
         try:
             usr_lang = json_data["user"]["lang"]
             if usr_lang in languages:
-                self.tweet["tags"]["usr_language"] = json_data["user"]["lang"]
+                self.tweet["fields"]["usr_language_"+usr_lang] = json_data["user"]["lang"]
             # self.lock.acquire()
             # self.data.usr_lang_counter[json_data["user"]["lang"]] += 1
             # self.lock.release()
@@ -115,7 +116,7 @@ class StdOutListener(StreamListener):
         try:
             lang = json_data["lang"]
             if lang in languages:
-                self.tweet["tags"]["tweet_language"] = json_data["lang"]
+                self.tweet["fields"]["tweet_language_"+lang] = json_data["lang"]
             # self.lock.acquire()
             # self.data.lang_counter[json_data["lang"]] += 1
             # self.lock.release()
@@ -125,8 +126,8 @@ class StdOutListener(StreamListener):
         try:
             source = json_data["source"]
             source_string = source[source.index(">") + 1:source.index("<", source.index(">") + 1)]
-            if source_string.startswith("Twitter "):
-                self.tweet["tags"]["source"] = source_string
+            if source_string in sources:
+                self.tweet["fields"]["source_"+sources[source_string]] = source_string
             # self.lock.acquire()
             # self.data.source_counter[source_string] += 1
             # self.lock.release()
