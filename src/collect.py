@@ -107,6 +107,12 @@ class StdOutListener(StreamListener):
             usr_lang = json_data["user"]["lang"]
             if usr_lang in languages:
                 self.tweet["fields"]["usr_language_"+usr_lang] = 1
+                rest = [x for x in languages if x != usr_lang]
+                for l in rest:
+                    self.tweet["fields"]["usr_language_" + l] = 0
+            else:
+                for l in languages:
+                    self.tweet["fields"]["usr_language_" + l] = 0
             # self.lock.acquire()
             # self.data.usr_lang_counter[json_data["user"]["lang"]] += 1
             # self.lock.release()
@@ -117,6 +123,12 @@ class StdOutListener(StreamListener):
             lang = json_data["lang"]
             if lang in languages:
                 self.tweet["fields"]["tweet_language_"+lang] = 1
+                rest = [x for x in languages if x != lang]
+                for l in rest:
+                    self.tweet["fields"]["tweet_language_" + l] = 0
+            else:
+                for l in languages:
+                    self.tweet["fields"]["tweet_language_" + l] = 0
             # self.lock.acquire()
             # self.data.lang_counter[json_data["lang"]] += 1
             # self.lock.release()
@@ -128,11 +140,19 @@ class StdOutListener(StreamListener):
             source_string = source[source.index(">") + 1:source.index("<", source.index(">") + 1)]
             if source_string in sources:
                 self.tweet["fields"]["source_"+sources[source_string]] = 1
+                rest = dict(sources)
+                del rest[source_string]
+                for s in rest:
+                    self.tweet["fields"]["source_" + sources[s]] = 0
+            else:
+                for s in sources:
+                    self.tweet["fields"]["source_" + sources[s]] = 0
             # self.lock.acquire()
             # self.data.source_counter[source_string] += 1
             # self.lock.release()
-        except KeyError:
+        except KeyError as e:
             logging.warning('KeyError while reading source')
+            print(str(e))
         except ValueError as e:
             logging.warning('Failed to read source field: %s', str(e))
 
