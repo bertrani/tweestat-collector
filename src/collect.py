@@ -6,6 +6,8 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+languages = ["de", "en", "ja", "es", "fr", "ru"]
+
 
 class StdOutListener(StreamListener):
     def __init__(self, data, lock):
@@ -24,6 +26,8 @@ class StdOutListener(StreamListener):
         logging.error("Error on API connection: %s", status)
 
     def get_data(self, json_data):
+        self.set_time()
+
         self.entities_count_reader(json_data, 'hashtags')
         self.entities_count_reader(json_data, 'urls')
         self.user_reader(json_data, 'followers_count')
@@ -36,8 +40,8 @@ class StdOutListener(StreamListener):
         self.null_reader(json_data, 'coordinates')
         self.null_reader(json_data, 'place')
         self.char_reader(json_data)
+        self.hash_url_reader(json_data)
         #self.tag_reader(json_data)
-        #self.hash_url_reader(json_data)
 
         self.lock.acquire()
         self.data.tweet_buffer.append(self.tweet)
@@ -99,28 +103,33 @@ class StdOutListener(StreamListener):
 
     def tag_reader(self, json_data):
         try:
-            self.tweet["tags"]["usr_language"] = json_data["user"]["lang"]
-            self.lock.acquire()
-            self.data.usr_lang_counter[json_data["user"]["lang"]] += 1
-            self.lock.release()
+            usr_lang = json_data["user"]["lang"]
+            if usr_lang in languages:
+                self.tweet["tags"]["usr_language"] = json_data["user"]["lang"]
+            # self.lock.acquire()
+            # self.data.usr_lang_counter[json_data["user"]["lang"]] += 1
+            # self.lock.release()
         except KeyError:
             logging.warning('KeyError while reading user/lang')
 
         try:
-            self.tweet["tags"]["tweet_language"] = json_data["lang"]
-            self.lock.acquire()
-            self.data.lang_counter[json_data["lang"]] += 1
-            self.lock.release()
+            lang = json_data["lang"]
+            if lang in languages:
+                self.tweet["tags"]["tweet_language"] = json_data["lang"]
+            # self.lock.acquire()
+            # self.data.lang_counter[json_data["lang"]] += 1
+            # self.lock.release()
         except KeyError:
             logging.warning('KeyError while reading tweet/lang')
 
         try:
             source = json_data["source"]
             source_string = source[source.index(">") + 1:source.index("<", source.index(">") + 1)]
-            self.tweet["tags"]["source"] = source_string
-            self.lock.acquire()
-            self.data.source_counter[source_string] += 1
-            self.lock.release()
+            if source_string.startswith("Twitter "):
+                self.tweet["tags"]["source"] = source_string
+            # self.lock.acquire()
+            # self.data.source_counter[source_string] += 1
+            # self.lock.release()
         except KeyError:
             logging.warning('KeyError while reading source')
         except ValueError as e:

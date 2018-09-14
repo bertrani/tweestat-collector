@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 def store_tweets(client, lock, data, interval=1):
     time.sleep(1)
     while True:
-        print(len(data.tweet_buffer))
         if len(data.tweet_buffer) > 5000:
             _store_raw(client=client, lock=lock, data=data)
         time.sleep(60)
