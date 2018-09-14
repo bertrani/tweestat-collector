@@ -106,7 +106,7 @@ class StdOutListener(StreamListener):
         try:
             usr_lang = json_data["user"]["lang"]
             if usr_lang in languages:
-                self.tweet["fields"]["usr_language_"+usr_lang] = json_data["user"]["lang"]
+                self.tweet["fields"]["usr_language_"+usr_lang] = 1
             # self.lock.acquire()
             # self.data.usr_lang_counter[json_data["user"]["lang"]] += 1
             # self.lock.release()
@@ -116,7 +116,7 @@ class StdOutListener(StreamListener):
         try:
             lang = json_data["lang"]
             if lang in languages:
-                self.tweet["fields"]["tweet_language_"+lang] = json_data["lang"]
+                self.tweet["fields"]["tweet_language_"+lang] = 1
             # self.lock.acquire()
             # self.data.lang_counter[json_data["lang"]] += 1
             # self.lock.release()
@@ -127,7 +127,7 @@ class StdOutListener(StreamListener):
             source = json_data["source"]
             source_string = source[source.index(">") + 1:source.index("<", source.index(">") + 1)]
             if source_string in sources:
-                self.tweet["fields"]["source_"+sources[source_string]] = source_string
+                self.tweet["fields"]["source_"+sources[source_string]] = 1
             # self.lock.acquire()
             # self.data.source_counter[source_string] += 1
             # self.lock.release()
