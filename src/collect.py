@@ -10,11 +10,10 @@ languages = ["de", "en", "ja", "es", "fr", "ru"]
 sources = {"Twitter for iPhone":"iphone", "Twitter for Android":"android", "Twitter Web Client":"web", "Twitter for iPad":"ipad"}
 
 
-class StdOutListener(StreamListener):
-    def __init__(self, data, lock):
+class TweetListener(StreamListener):
+    def __init__(self, data):
         super().__init__()
         self.data = data
-        self.lock = lock
         self.tweet = {"measurement": "tweet", "tags": {}, "fields": {}}
 
     def on_data(self, data):
@@ -44,9 +43,7 @@ class StdOutListener(StreamListener):
         #self.hash_url_reader(json_data)
         self.tag_reader(json_data)
 
-        self.lock.acquire()
         self.data.tweet_buffer.append(self.tweet)
-        self.lock.release()
 
         self.tweet = {"measurement": "tweet", "tags": {}, "fields": {}}
 
@@ -113,9 +110,6 @@ class StdOutListener(StreamListener):
             else:
                 for l in languages:
                     self.tweet["fields"]["usr_language_" + l] = 0
-            # self.lock.acquire()
-            # self.data.usr_lang_counter[json_data["user"]["lang"]] += 1
-            # self.lock.release()
         except KeyError:
             logging.warning('KeyError while reading user/lang')
 
@@ -129,9 +123,6 @@ class StdOutListener(StreamListener):
             else:
                 for l in languages:
                     self.tweet["fields"]["tweet_language_" + l] = 0
-            # self.lock.acquire()
-            # self.data.lang_counter[json_data["lang"]] += 1
-            # self.lock.release()
         except KeyError:
             logging.warning('KeyError while reading tweet/lang')
 
@@ -147,9 +138,6 @@ class StdOutListener(StreamListener):
             else:
                 for s in sources:
                     self.tweet["fields"]["source_" + sources[s]] = 0
-            # self.lock.acquire()
-            # self.data.source_counter[source_string] += 1
-            # self.lock.release()
         except KeyError as e:
             logging.warning('KeyError while reading source')
             print(str(e))
@@ -160,17 +148,13 @@ class StdOutListener(StreamListener):
         try:
             for tag in json_data["entities"]["hashtags"]:
                 tag_str = str.lower(tag["text"])
-                self.lock.acquire()
                 self.data.hashtag_counter[tag_str] += 1
-                self.lock.release()
         except KeyError as e:
             logging.warning('KeyError while reading hashtags: %s', str(e))
 
         try:
             for url in json_data["entities"]["urls"]:
                 netloc = urlparse(url["expanded_url"]).netloc
-                self.lock.acquire()
                 self.data.url_counter[netloc] += 1
-                self.lock.release()
         except KeyError as e:
             logging.warning('KeyError while reading urls: %s', str(e))
