@@ -8,8 +8,8 @@ from collect import TweetListener
 from data import data
 from store import *
 
-# TODO Reimplement locks for thread safety. Was already implement but caused some problems.
-# TODO Seems to run without locks for a few weeks now.
+# TODO Reimplement locks for thread safety. Was already implemented but caused some problems.
+# TODO Runs without locks for about 3 month now and seems to be fine.
 
 
 def start(function, name, kwargs=None):
@@ -79,12 +79,11 @@ if __name__ == '__main__':
     threading.Thread(target=start, kwargs=dict(function=store_tweets, name="StoreTweets",
                                                kwargs=dict(client=client, data=data))).start()
 
-    # The following threads are not started since the according features are disabled at the moment.
-    #
+# The following threads are not started since the according features are disabled at the moment.
+
     # threading.Thread(
     #       target=start, kwargs=dict(function=store_tags_urls, name="StoreTagsUrls",
     #                                 kwargs=dict(client=client, data=data, lock=lock, interval=600))).start()
     # threading.Thread(
     #       target=start, kwargs=dict(function=store_source_lang, name="StoreSourceLang",
     #                                 kwargs=dict(client=client, data=data, lock=lock, interval=60))).start()
-    #
