@@ -77,7 +77,7 @@ if __name__ == '__main__':
     # Start a Thread for collection data and one for storing data
     threading.Thread(target=start, kwargs=dict(function=stream.sample, name='Collect'), name="Collect").start()
     threading.Thread(target=start, kwargs=dict(function=store_tweets, name="StoreTweets",
-                                               kwargs=dict(client=client, data=data, lock=lock))).start()
+                                               kwargs=dict(client=client, data=data))).start()
 
     # The following threads are not started since the according features are disabled at the moment.
     #

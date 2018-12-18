@@ -9,10 +9,9 @@ logger = logging.getLogger(__name__)
 def store_tweets(client, data):
     time.sleep(1)
     while True:
-        print(len(data.tweet_buffer))
         if len(data.tweet_buffer) > 5000:
             _store_raw(client=client, data=data)
-        time.sleep(20)
+        time.sleep(60)
 
 
 def store_tags_urls(client, data, interval=900, min_size=5):
